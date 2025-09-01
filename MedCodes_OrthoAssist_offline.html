@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1724"/>
+  
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <title>MedCodes OrthoAssist · Surgical Assist Widget</title>
+  <style>
+    :root{
+      --bg:#0b1724;
+      --card:#111d2b;
+      --muted:#7c8aa1;
+      --text:#e9f1fb;
+      --accent:#3aaefc;
+      --ok:#3df5a1;
+      --warn:#ffd166;
+      --danger:#ff6b6b;
+      --input:#0f1b29;
+      --border:#1f2c3d;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    header{position:sticky;top:0;background:linear-gradient(180deg,rgba(11,23,36,.97),rgba(11,23,36,.85));backdrop-filter:blur(8px);padding:12px 16px;border-bottom:1px solid var(--border);z-index:20;display:flex;gap:12px;align-items:center}
+    header img{width:28px;height:28px;border-radius:6px}
+    header h1{font-size:16px;margin:0;letter-spacing:.4px}
+    #tabs{display:flex;overflow:auto;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);background:#0d1a28}
+    #tabs button{background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:999px;white-space:nowrap}
+    #tabs button.active{background:var(--accent);border-color:var(--accent);color:#00111d}
+    main{padding:16px;display:grid;gap:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.22)}
+    h2{margin:0 0 8px 0;font-size:18px}
+    h3{margin:10px 0 6px 0;font-size:15px;color:var(--muted)}
+    label{display:block;margin:8px 0 2px;color:var(--muted);font-size:13px}
+    input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--input);color:var(--text);outline:none}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .btn{display:inline-block;background:var(--accent);color:#00111d;padding:10px 14px;border-radius:12px;border:none;font-weight:600}
+    .btn.secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
+    .muted{color:var(--muted);font-size:13px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .result{padding:10px;border-radius:12px;background:#0e1a28;border:1px dashed var(--border);margin-top:8px}
+    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:4px 8px;margin:4px 6px 0 0;font-size:12px;color:var(--muted)}
+    .copy{float:right;font-size:12px}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .danger{color:var(--danger)}
+    .small{font-size:12px}
+    details{background:#0f1c2a;border:1px solid var(--border);padding:10px;border-radius:12px}
+    summary{cursor:pointer}
+    .code{background:#0d1a28;border:1px solid var(--border);padding:10px;border-radius:12px;overflow:auto}
+    .list{display:flex;flex-wrap:wrap;gap:8px}
+    .tag{font-size:12px;background:#102034;border:1px solid var(--border);padding:6px 10px;border-radius:999px}
+    footer{padding:30px 16px 80px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="assets/icon-192.png" alt="MedCodes">
+    <h1>MedCodes OrthoAssist · Surgical Assist Widget</h1>
+  </header>
+  <div id="tabs"></div>
+  <main id="content"></main>
+
+  <footer class="muted small">
+    <b>Disclaimer:</b> Educational reference for licensed clinicians. Not a substitute for clinical judgment; follow your institution’s policies & formularies.
+  </footer>
+
+  <script>
+// [single-file build]
+    const tabs = [
+      { id:'abx', label:'Antibiotic Dosing' },
+      { id:'caprini', label:'Caprini RAM' },
+      { id:'codes', label:'CPT / ICD-10' },
+      { id:'snips', label:'Note Snippets' },
+      { id:'calc', label:'BMI & Conversions' },
+      { id:'about', label:'About' },
+    ];
+
+    const CPT = [{"code": "27130", "label": "Total hip arthroplasty (THA)"}, {"code": "27447", "label": "Total knee arthroplasty (TKA)"}, {"code": "23472", "label": "Total shoulder arthroplasty"}, {"code": "29881", "label": "Knee arthroscopy with meniscectomy"}, {"code": "29882", "label": "Knee arthroscopy with meniscus repair"}, {"code": "29888", "label": "Arthroscopically aided ACL reconstruction"}, {"code": "25607", "label": "Open treatment distal radius fx extra-articular"}, {"code": "25609", "label": "Open treatment distal radius fx intra-articular 3+ fragments"}, {"code": "24505", "label": "Open treatment humeral shaft fracture"}, {"code": "27792", "label": "ORIF distal fibula/lateral malleolus"}, {"code": "27788", "label": "Closed treatment distal tibia (pilon) without manipulation"}, {"code": "27236", "label": "Open treatment proximal femur fx with prosthesis"}];
+    const ICD = [{"code": "S72.001A", "label": "Fracture of neck of femur, right, initial"}, {"code": "S52.501A", "label": "Unspecified fracture of distal radius, right, initial"}, {"code": "M16.11", "label": "Unilateral primary osteoarthritis, right hip"}, {"code": "M17.11", "label": "Unilateral primary osteoarthritis, right knee"}, {"code": "M75.101", "label": "Unspecified rotator cuff tear, right shoulder"}, {"code": "S83.511A", "label": "Sprain of anterior cruciate ligament of right knee, initial"}];
+    const SNIPS = ["Discussed risks, benefits, and alternatives including infection, bleeding, damage to surrounding structures, anesthetic complications, VTE, stiffness, continued pain, need for further surgery, and rare but serious risks including death.", "Patient understands postoperative restrictions and rehabilitation plan; questions answered; informed consent obtained.", "Antibiotic prophylaxis, VTE prevention, and pain management will follow institutional protocols and evidence-based guidelines."];
+
+    const elTabs = document.getElementById('tabs');
+    const elContent = document.getElementById('content');
+
+    function btn(label, cls='btn'){ return `<button class="${cls}">${label}</button>` }
+    function copyBtn(text){ return `<button class="btn secondary copy" onclick="navigator.clipboard.writeText($"" + this.dataset.t)" data-t="${text.replace('`','\`')}" >Copy</button>` }
+    function card(title, inner){ return `<section class="card"><h2>${title}</h2>${inner||''}</section>` }
+    function pill(text){ return `<span class="pill">${text}</span>` }
+
+    function setTab(id){
+      elTabs.innerHTML = tabs.map(t=>`<button class="${t.id===id?'active':''}" onclick="setTab('${t.id}')">${t.label}</button>`).join('');
+      window.scrollTo({top:0,behavior:'smooth'});
+      if(id==='abx') renderAbx();
+      if(id==='caprini') renderCaprini();
+      if(id==='codes') renderCodes();
+      if(id==='snips') renderSnips();
+      if(id==='calc') renderCalc();
+      if(id==='about') renderAbout();
+    }
+
+    // Convert helpers
+    function toKg(v, unit){ return unit==='kg'? v : v*0.45359237 }
+
+    // --- Antibiotic dosing ---
+    function renderAbx(){
+      elContent.innerHTML = card('Pre-op Antibiotic Dosing', `
+        <div class="row">
+          <div>
+            <label>Drug</label>
+            <select id="drug">
+              <option value="cefazolin">Cefazolin</option>
+              <option value="vancomycin">Vancomycin</option>
+            </select>
+          </div>
+          <div>
+            <label>Weight</label>
+            <div class="row">
+              <input id="wt" type="number" inputmode="decimal" placeholder="e.g., 82">
+              <select id="unit"><option value="kg">kg</option><option value="lb">lb</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div><button class="btn" onclick="dose()">Calculate Dose</button></div>
+          <div><button class="btn secondary" onclick="abxReset()">Reset</button></div>
+        </div>
+        <div id="abxResult" class="result muted small"></div>
+        <div class="muted small" style="margin-top:8px">
+          <details>
+            <summary>Redosing & timing</summary>
+            <ul>
+              <li><b>Cefazolin:</b> redose every ~4 h intra-op; consider earlier with major blood loss (&gt;1500 mL). Start within 60 min of incision.</li>
+              <li><b>Vancomycin:</b> 15 mg/kg. Infuse so dose finishes before incision; redosing typically not required for routine case durations.</li>
+            </ul>
+          </details>
+        </div>
+      `);
+    }
+    function dose(){
+      const d = document.getElementById('drug').value;
+      let w = parseFloat(document.getElementById('wt').value||'0');
+      const unit = document.getElementById('unit').value;
+      if(!w || w<=0){ document.getElementById('abxResult').innerHTML = '<span class="danger">Enter a valid weight.</span>'; return; }
+      w = toKg(w, unit);
+
+      let msg = '';
+      if(d==='cefazolin'){
+        const dose = (w>=120)? 3 : 2;
+        msg += `<b>Recommended dose:</b> ${dose} g IV prior to incision.`;
+        msg += `<div class="small muted">Note: some centers standardize 2 g for adults; follow local policy.</div>`;
+        msg += `<div class="pill">Re-dose q~4h</div>`;
+      }else{
+        const mgExact = 15*w;
+        const mgRounded = Math.round(mgExact/250)*250;
+        const capped = Math.min(mgRounded, 2000);
+        msg += `<b>Weight-based:</b> ~${mgRounded} mg (${mgExact.toFixed(0)} mg rounded).`;
+        if(mgRounded>2000){ msg += ` <span class="warn">Common institutional max is 2000 mg; showing capped: ${capped} mg.</span>`; }
+        msg += `<div class="small muted">Alternative fixed tiers used by some institutions: 1 g (≤70 kg), 1.5 g (70–100 kg), 2 g (≥100 kg).</div>`;
+        msg += `<div class="pill">Re-dose usually not required</div>`;
+      }
+      document.getElementById('abxResult').innerHTML = msg;
+    }
+    function abxReset(){ document.getElementById('wt').value=''; document.getElementById('abxResult').innerHTML=''; }
+
+    // --- Caprini (simplified) ---
+    const capriniSimple = [
+      {pt:1,label:'Age 41–60'},
+      {pt:1,label:'BMI &gt; 25'},
+      {pt:1,label:'Minor surgery (&lt;45 min)'},
+      {pt:2,label:'Age 61–74'},
+      {pt:2,label:'Major surgery (&ge;45 min) or laparoscopy (&ge;45 min)'},
+      {pt:2,label:'Arthroplasty (hip/knee/shoulder)'},
+      {pt:2,label:'Immobilization &gt;72h / plaster cast'},
+      {pt:3,label:'Age ≥75'},
+      {pt:3,label:'History of VTE'},
+      {pt:3,label:'Known thrombophilia'},
+      {pt:3,label:'Cancer (active or treated within 1 yr)'},
+      {pt:5,label:'Stroke (&lt;1 mo) or multiple trauma'},
+      {pt:5,label:'Acute spinal cord injury or hip/pelvis/leg fracture'}
+    ];
+    function capriniCategory(score){
+      if(score<=4) return {cat:'Low–Moderate', msg:'Mechanical prophylaxis typically considered; chemoprophylaxis per protocol.'};
+      if(score<=8) return {cat:'High', msg:'High risk; consider combined modalities per institutional guidelines.'};
+      return {cat:'Highest', msg:'Very high risk; strong consideration for combined prophylaxis; individualize care.'};
+    }
+    function renderCaprini(){
+      elContent.innerHTML = card('Caprini VTE Risk (Quick)', `
+        <div class="row">
+          <div>
+            <label>Total score</label>
+            <input id="capriniScore" type="number" inputmode="numeric" placeholder="e.g., 6">
+          </div>
+          <div style="display:flex;align-items:end">
+            <button class="btn" onclick="capriniInterpret()">Interpret</button>
+          </div>
+        </div>
+        <div id="capriniResult" class="result muted small"></div>
+      `) + card('Caprini Checklist (Simplified)', `
+        <div id="capriniList"></div>
+        <div class="row" style="margin-top:10px">
+          <div><button class="btn" onclick="capriniCalcFromList()">Calculate</button></div>
+          <div><button class="btn secondary" onclick="capriniReset()">Reset</button></div>
+        </div>
+        <div id="capriniListResult" class="result muted small"></div>
+        <div class="muted small" style="margin-top:8px">
+          <details><summary>About this tool</summary>
+            This simplified checklist covers common orthopedics factors and may undercount risk. For full RAM and item definitions, see the official Caprini resources. Use clinical judgment and follow local protocols.
+          </details>
+        </div>
+      `);
+      const list = document.getElementById('capriniList');
+      list.innerHTML = capriniSimple.map((item,i)=>`
+        <label><input type="checkbox" data-pt="${item.pt}" id="ci${i}"> ${item.label} <span class="pill">${item.pt} pt</span></label>
+      `).join('');
+    }
+    function capriniInterpret(){
+      const v = parseInt(document.getElementById('capriniScore').value||'0',10);
+      if(!v){ document.getElementById('capriniResult').innerHTML = 'Enter a score.'; return; }
+      const info = capriniCategory(v);
+      document.getElementById('capriniResult').innerHTML = `<b>Score:</b> ${v} → <b>${info.cat}</b>. <span class="muted">${info.msg}</span>`;
+    }
+    function capriniCalcFromList(){
+      let total = 0;
+      capriniSimple.forEach((item,i)=>{ const el = document.getElementById('ci'+i); if(el && el.checked) total += item.pt; });
+      const info = capriniCategory(total);
+      document.getElementById('capriniListResult').innerHTML = `<b>Total:</b> ${total} → <b>${info.cat}</b>. <span class="muted">${info.msg}</span>`;
+    }
+    function capriniReset(){ document.querySelectorAll('#capriniList input[type=checkbox]').forEach(c=>c.checked=false); document.getElementById('capriniListResult').innerHTML=''; }
+
+    // --- Codes quick search ---
+    function renderCodes(){
+      elContent.innerHTML = card('Quick Search', `
+        <input id="q" placeholder="Search by code or keyword (e.g., 'knee', '27130')">
+        <div style="margin-top:10px"><button class="btn" onclick="doSearch()">Search</button></div>
+        <div id="results" class="result"></div>
+        <div class="muted small" style="margin-top:8px">Reference only. Verify payer-specific coding and documentation.</div>
+      `);
+    }
+    function doSearch(){
+      const q = (document.getElementById('q').value||'').toLowerCase();
+      const res = [];
+      [ ...CPT.map(x=>({...x,type:'CPT'})), ...ICD.map(x=>({...x,type:'ICD-10'})) ].forEach(it=>{
+        if(it.code.toLowerCase().includes(q) || it.label.toLowerCase().includes(q)) res.push(it);
+      });
+      const out = res.length? res.map(r=>`
+        <div class="card">
+          <b class="mono">${r.type} ${r.code}</b> — ${r.label}
+          <button class="btn secondary copy" onclick="navigator.clipboard.writeText('${r.code} — ${r.label}')">Copy</button>
+        </div>
+      `).join('') : '<span class="muted small">No results.</span>';
+      document.getElementById('results').innerHTML = out;
+    }
+
+    // --- Note snippets ---
+    function renderSnips(){
+      elContent.innerHTML = SNIPS.map(s=>card('Consent/Documentation', `
+        <div class="muted">${s}</div>
+        <button class="btn secondary copy" onclick="navigator.clipboard.writeText('${s.replace('"','&quot;')}')">Copy</button>
+      `)).join('');
+    }
+
+    // --- BMI & conversions ---
+    function renderCalc(){
+      elContent.innerHTML = card('BMI Calculator', `
+        <div class="row">
+          <div>
+            <label>Weight</label>
+            <div class="row">
+              <input id="bmiw" type="number" inputmode="decimal" placeholder="e.g., 82">
+              <select id="bmiwu"><option value="kg">kg</option><option value="lb">lb</option></select>
+            </div>
+          </div>
+          <div>
+            <label>Height</label>
+            <div class="row">
+              <input id="bmih" type="number" inputmode="decimal" placeholder="e.g., 175">
+              <select id="bmihu"><option value="cm">cm</option><option value="in">in</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div><button class="btn" onclick="bmi()">Compute</button></div>
+          <div><button class="btn secondary" onclick="document.getElementById('bmiResult').innerHTML=''">Clear</button></div>
+        </div>
+        <div id="bmiResult" class="result muted small"></div>
+      `) + card('Quick Conversions', `
+        <div class="list">
+          <span class="tag">1 in = 2.54 cm</span>
+          <span class="tag">1 lb = 0.453592 kg</span>
+          <span class="tag">1 kg = 2.20462 lb</span>
+        </div>
+      `);
+    }
+    function bmi(){
+      let w = parseFloat(document.getElementById('bmiw').value||'0');
+      let h = parseFloat(document.getElementById('bmih').value||'0');
+      const wu = document.getElementById('bmiwu').value;
+      const hu = document.getElementById('bmihu').value;
+      if(wu==='lb') w = w*0.45359237;
+      if(hu==='in') h = h*2.54;
+      const m = h/100.0;
+      if(!w || !h){ document.getElementById('bmiResult').innerHTML = 'Enter weight and height.'; return; }
+      const val = (w/(m*m));
+      document.getElementById('bmiResult').innerHTML = `<b>BMI:</b> ${val.toFixed(1)}`;
+    }
+
+    // --- About ---
+    function renderAbout(){
+      elContent.innerHTML = card('Disclaimers', `
+        <div class="muted small">
+          Informational reference for licensed clinicians. Always apply clinical judgment and your institution's policies. Dosing/redosing vary by patient specifics (renal function, allergy, MRSA screening, etc.).
+        </div>
+      `) + card('Branding', `
+        <div class="muted small"><b>Brand:</b> MedCodes OrthoAssist</div>
+      `) + card('Install to Home Screen', `
+        <ol class="small">
+          <li><b>Immediate use (no hosting):</b> open the SINGLE-FILE version from your Files app. It runs offline.</li>
+          <li><b>App-like install:</b> host this folder on an HTTPS site (e.g., Netlify/Vercel), visit the URL, then use “Add to Home Screen.”</li>
+        </ol>
+      `);
+    }
+
+    // Init
+    setTab('abx');
+  </script>
+</body>
+</html>

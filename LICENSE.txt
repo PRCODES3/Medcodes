@@ -1,0 +1,6 @@
+MedCodes OrthoAssist — Single-Practice License
+
+You (the purchaser) may use, modify, and deploy the files for one medical practice (single legal entity).
+You may not resell or redistribute the source files, except as bundled for internal use within your practice.
+No warranty. Not medical advice. Use at your own risk. Always follow institutional policies and applicable laws.
+© 2025 MedCodes.
